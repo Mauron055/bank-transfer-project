@@ -3,27 +3,21 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.vertica.hooks.vertica import VerticaHook
 from datetime import datetime, timedelta
 
-# Параметры подключения к Vertica
 vertica_conn_id = "vertica_conn_id"
 
 
-# Запрос на обновление витрины данных
 def update_data_warehouse(**kwargs):
-    # Получаем дату из параметров задачи
     execution_date = kwargs["execution_date"]
     yesterday = execution_date - timedelta(days=1)
     date_str = yesterday.strftime("%Y-%m-%d")
 
-    # Подключение к Vertica
     hook = VerticaHook(vertica_conn_id=vertica_conn_id)
 
-    # Запрос на очистку от тестовых аккаунтов
     sql_clean_transactions = f"""
         DELETE FROM STV2024050734__STAGING.transactions
         WHERE account_number_from < 0 OR account_number_to < 0;
     """
 
-    # Запрос на инкрементальную загрузку в витрину
     sql_update_dwh = f"""
         INSERT INTO STV2024050734__DWH.global_metrics (date_update, currency_from, amount_total, cnt_transactions, avg_transactions_per_account, cnt_accounts_make_transactions)
         SELECT 
@@ -42,7 +36,6 @@ def update_data_warehouse(**kwargs):
     hook.run(sql_update_dwh)
 
 
-# Создание DAG
 with DAG(
     dag_id="update_data_warehouse",
     start_date=datetime(2022, 10, 1),
